@@ -1755,8 +1755,7 @@ window.handleLogin = function (e) {
         matchedUser.status = 'ออนไลน์';
         matchedUser.lastLogin = new Date().toISOString();
         saveDB();
-        syncDataWithCloud();
-
+        
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appLayout').classList.remove('hidden');
         document.getElementById('loginError').classList.add('hidden');
@@ -1781,7 +1780,6 @@ window.handleLogout = function () {
         if (u) {
             u.status = 'ออฟไลน์';
             saveDB();
-        syncDataWithCloud();
         }
     }
     sessionStorage.removeItem('isLoggedIn');
