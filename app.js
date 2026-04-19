@@ -70,7 +70,13 @@ async function fetchDataFromCloud() {
     try {
         const res = await fetch(SCRIPT_URL);
         const data = await res.json();
-        if (data && data.drugs) {
+        
+        if (data) {
+            // กรองแถวว่างจาก Google Sheets
+            if (data.drugs) data.drugs = data.drugs.filter(x => x && x.id);
+            if (data.patients) data.patients = data.patients.filter(x => x && x.hn);
+            if (data.prescriptions) data.prescriptions = data.prescriptions.filter(x => x && x.id);
+
             // Preserve local arrays if cloud doesn't have them or they are empty
             if ((!data.patients || data.patients.length === 0) && db.patients && db.patients.length > 0) data.patients = db.patients;
             if ((!data.prescriptions || data.prescriptions.length === 0) && db.prescriptions && db.prescriptions.length > 0) data.prescriptions = db.prescriptions;
