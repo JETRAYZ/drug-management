@@ -1,5 +1,5 @@
 // --- ตั้งค่า URL ที่นี่เพื่อให้โปรแกรมจำค่าได้อัตโนมัติ (ไม่ต้องกรอกทุกครั้ง) ---
-const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwEBxNq4oqVbhbbhV8Mrar_81hP3xxkqI9I8PO9am1TUKspIONHRiMIpIw45uQvEzZ4/exec"; // <--- นำลิงก์ Google Script มาใส่ในเครื่องหมายคำพูดนี้ได้เลยครับ
+const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbxmqSQ7esuOU1lzInpMXUziD3630czdks_8JzyFftz96KWI2QAcQ8cU5s6lTDkAWPzq/exec"; // <--- นำลิงก์ Google Script มาใส่ในเครื่องหมายคำพูดนี้ได้เลยครับ
 // ----------------------------------------------------------------------
 
 const DB_KEY = 'chemo_db_v2';
