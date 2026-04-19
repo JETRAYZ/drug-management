@@ -1,0 +1,148 @@
+ขั้นตอนการตั้งค่า Google Sheets (ละเอียดที่สุด)
+--------------------------------------------------
+
+1. สร้างไฟล์ Google Sheets ใหม่:
+   - ไปที่ https://sheets.new
+   - ตั้งชื่อไฟล์ตามต้องการ เช่น "ฐานข้อมูลระบบคลังยา"
+
+2. เปิดตัวแก้ไขส่วนขยาย:
+   - ไปที่เมนู "ส่วนขยาย" (Extensions) > "Apps Script"
+
+3. วางโค้ดด้านล่างนี้ลงไป (ลบของเก่าออกให้หมด):
+
+--------------------------------------------------
+// --- โค้ดสำหรับ Google Apps Script ---
+
+function doGet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var drugs = getDataAsJson(ss.getSheetByName("drugs"));
+  var logs = getDataAsJson(ss.getSheetByName("inventoryLogs"));
+  var users = getDataAsJson(ss.getSheetByName("users"));
+  var prescriptions = getDataAsJson(ss.getSheetByName("prescriptions"));
+  var patients = getDataAsJson(ss.getSheetByName("patients"));
+  
+  var result = {
+    drugs: drugs,
+    inventoryLogs: logs,
+    users: users,
+    prescriptions: prescriptions,
+    patients: patients
+  };
+  
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    if (data.action === "syncAll") {
+      updateSheet(ss, "drugs", data.db.drugs);
+      updateSheet(ss, "inventoryLogs", data.db.inventoryLogs);
+      updateSheet(ss, "users", data.db.users);
+      updateSheet(ss, "prescriptions", data.db.prescriptions);
+      updateSheet(ss, "patients", data.db.patients);
+      
+      return ContentService.createTextOutput(JSON.stringify({success: true}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateSheet(ss, sheetName, dataArray) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  sheet.clear();
+  
+  if (dataArray && dataArray.length > 0) {
+    // กำหนดลำดับหัวตารางให้แน่นอนเพื่อป้องกันข้อมูลสลับคอลัมน์
+    var keys = Object.keys(dataArray[0]);
+    // ย้าย id มาไว้หน้าสุดถ้ามี
+    if (keys.indexOf('id') > -1) {
+      keys.splice(keys.indexOf('id'), 1);
+      keys.unshift('id');
+    }
+    
+    sheet.appendRow(keys); // เขียนหัวตารางใหม่
+    
+    var rows = dataArray.map(function(item) {
+      return keys.map(function(key) {
+        var val = item[key];
+        if (val === undefined || val === null) return "";
+        return (typeof val === 'object') ? JSON.stringify(val) : val;
+      });
+    });
+    
+    sheet.getRange(2, 1, rows.length, keys.length).setValues(rows);
+    sheet.setFrozenRows(1); // ตรึงแถวแรก
+  }
+}
+
+function getDataAsJson(sheet) {
+  if (!sheet) return [];
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2) return [];
+  
+  var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+  var headers = data[0];
+  var rows = data.slice(1);
+  
+  return rows.map(function(row) {
+    var obj = {};
+    headers.forEach(function(header, i) {
+      var h = String(header).trim();
+      if (!h && i === 0) h = "id"; // ถ้าคอลัมน์แรกไม่มีชื่อ ให้เดาว่าเป็น id
+      if (!h) return; 
+      
+      var val = row[i];
+      try {
+        if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
+          obj[h] = JSON.parse(val);
+        } else {
+          obj[h] = val;
+        }
+      } catch(e) {
+        obj[h] = val;
+      }
+    });
+    return obj;
+  });
+}
+--------------------------------------------------
+
+4. บันทึกและติดตั้ง (Deploy):
+   - กดรูป "แผ่นดิสก์" เพื่อบันทึกโครงการ
+   - กดปุ่ม "การทำให้ใช้งานได้" (Deploy) > "การทำให้ใช้งานได้ใหม่" (New Deployment)
+   - เลือกประเภทเป็น "เว็บแอป" (Web App)
+   - ตั้งค่าดังนี้ (สำคัญมาก!):
+     - คำอธิบาย: "v1"
+     - ผู้ที่ใช้งาน: "ฉัน" (Me)
+     - **ผู้ที่มีสิทธิ์เข้าถึง: "ทุกคน" (Anyone)** <-- ต้องเลือกอันนี้เท่านั้น
+   - กดปุ่ม "การทำให้ใช้งานได้" (Deploy)
+
+5. ให้สิทธิ์การเข้าถึง (Authorize):
+   - จะมีหน้าต่างเด้งขึ้นมา ให้กด "ให้สิทธิ์การเข้าถึง" (Authorize access)
+   - เลือกบัญชี Google ของคุณ
+   - หากเจอหน้าต่างเตือน "Google hasn't verified this app" ให้กด "Advanced" (ขั้นสูง) > แล้วกด "Go to ... (unsafe)"
+   - กด "Allow" (อนุญาต)
+
+6. คัดลอก URL:
+   - คัดลอก URL ของเว็บแอป (จะขึ้นต้นด้วย https://script.google.com/macros/s/...)
+   - นำ URL นี้ไปวางในช่อง "Google Sheet API URL" ที่หน้า Login ของโปรแกรม หรือหน้า "ตั้งค่าระบบ"
+
+7. ทำไมใน Google Sheet ยังว่าง?
+   - ระบบจะซิงค์ข้อมูลขึ้นไปเมื่อมีการ "กดบันทึก" หรือ "มีการเปลี่ยนแปลงข้อมูล" เช่น เพิ่มยาใหม่ หรือ จ่ายยา
+   - ลองกดเพิ่มรายการยา 1 รายการ แล้วรอสักครู่ (จะมีข้อความสีเขียวมุมขวาบนบอกว่า "ซิงค์สำเร็จ") จากนั้นไปเช็คที่หน้า Google Sheets จะเห็นชีทใหม่ (drugs, users, etc.) ถูกสร้างขึ้นอัตโนมัติครับ
+
+8. วิธีล้างข้อมูล Demo เก่า:
+   - ไปที่เมนู "ตั้งค่าระบบ"
+   - กดปุ่ม "ล้างข้อมูลและเริ่มใหม่" (ตัวหนังสือสีแดง)
+   - โปรแกรมจะรีเฟรช และจะไม่มีข้อมูล Demo ค้างอยู่ครับ
